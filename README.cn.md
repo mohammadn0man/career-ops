@@ -89,6 +89,7 @@ career-ops 具备代理式工作能力：Claude Code 会用 Playwright 浏览招
 | **平台扫描器** | 预配置 45+ 家公司（Anthropic、OpenAI、ElevenLabs、Retool、n8n...），支持跨 Ashby、Greenhouse、Lever、Wellfound 的自定义查询 |
 | **批量处理** | 使用 `claude -p` worker 并行评估 |
 | **Dashboard TUI** | 在终端 UI 中浏览、筛选和排序你的求职管道 |
+| **Web 仪表盘** | 本地 React + Vite Web UI（Catppuccin 主题），功能与 TUI 相同：筛选标签、排序循环、分组/平铺视图、实时搜索、状态变更、PDF 预览和进度页面。`applications.md` 变化时自动刷新 |
 | **人类在环** | AI 负责评估和建议，你负责决定和行动。系统绝不会自动提交申请，最终决定始终在你手上 |
 | **管道完整性** | 自动合并、去重、状态标准化和健康检查 |
 
@@ -241,6 +242,30 @@ npm run build:dashboard   # optional: build the standalone binary
 
 功能包括：6 个筛选标签、4 种排序模式、分组/平铺视图、懒加载预览、行内状态修改。
 
+## Web 仪表盘
+
+一个在浏览器中镜像 TUI 的本地 React + Vite Web UI。它与 Go TUI 共存 —— 两者读写同一个 `applications.md`，因此不会发生同步偏差。
+
+```bash
+npm run install:web    # 首次 —— 安装 web/、web/server/、web/client/ 的依赖
+npm run serve:web      # 开发模式（Vite HMR 在 :5174，API 在 :3333）
+npm run build:web      # 生产构建 → web/client/dist/
+npm run start:web      # 生产服务器（在 :3333 上提供构建后的客户端）
+```
+
+然后打开 **http://localhost:5174** (开发) 或 **http://localhost:3333** (生产)。
+
+与 TUI 的功能对等：
+
+- **Pipeline 页面** — 8 个筛选标签、7 种排序模式、分组/平铺视图、实时搜索、列选择器、带 archetype/TL;DR/comp/outcome 的预览面板。
+- **报告查看器** — 完整的 Markdown 渲染（GFM 表格 + 代码块）、打开职位 URL、打开 cover letter PDF、行内状态变更。
+- **进度页面** — 漏斗条、评分分布、response/interview/offer 转化率、最近 8 个 ISO 周的活动。
+- **兼容 TUI 的键盘快捷键** — `j/k` 导航、`h/l` 切换标签、`s` 循环排序、`v` 分组/平铺、`/` 搜索、`c` 更改状态、`C` 列选择器、`Enter` 打开报告、`o` URL、`d` PDF、`D` 重新生成 PDF、`p` 进度、`g/G` 顶端/末端、`r` 刷新、`Esc/q` 返回。
+- **实时更新** — 服务器使用 `fs.watch` 监视 `data/applications.md` 并推送 SSE 事件；当其他地方（例如 TUI 或编辑器）更改状态时，UI 会自动刷新。
+- **仅本地，无认证** — 绑定到 `127.0.0.1`。所有 shell 调用（`打开 URL`、`打开 PDF`、`重新生成 PDF`）都使用带 argv 数组的 `execFile` 并验证路径位于仓库内 —— 没有 path-traversal 或 command-injection 表面。
+
+技术栈：React 18 + TypeScript + Vite 6 + Tailwind CSS（Catppuccin Mocha 调色板）+ 复用 `tracker-parse.mjs` 和 `generate-pdf.mjs` 的 Express 4 后端。
+
 ## 项目结构
 
 ```
@@ -265,6 +290,9 @@ career-ops/
 │   ├── batch-prompt.md          # 自包含 worker 提示词
 │   └── batch-runner.sh          # 编排脚本
 ├── dashboard/                   # Go TUI 管道查看器
+├── web/                         # React Web 仪表盘（与 TUI 共存）
+│   ├── server/                  # Express API + fs.watch SSE
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # 你的追踪数据（已 gitignore）
 ├── reports/                     # 评估报告（已 gitignore）
 ├── output/                      # 生成的 PDF（已 gitignore）
@@ -285,6 +313,7 @@ career-ops/
 - **PDF**：Playwright/Puppeteer + HTML 模板
 - **扫描器**：Playwright + Greenhouse API + WebSearch
 - **Dashboard**：Go + Bubble Tea + Lipgloss（Catppuccin Mocha 主题）
+- **Web 仪表盘**：React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4（同样的 Catppuccin 主题，SSE 驱动的自动刷新）
 - **数据**：Markdown 表格 + YAML 配置 + TSV 批处理文件
 
 ## 也已开源

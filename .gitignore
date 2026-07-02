@@ -92,3 +92,14 @@ package-lock.json
 
 # Planning (local scratchpad)
 plan/
+scripts/build-cover-letters.mjs
+scripts/build-cv-pdfs.mjs
+scripts/fetch-jds.mjs
+
+# Web dashboard
+web/node_modules/
+web/server/node_modules/
+web/client/node_modules/
+web/client/dist/
+web/server/*.log
+web/client/*.log

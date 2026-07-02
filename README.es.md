@@ -98,6 +98,7 @@ Construido por alguien que lo uso para evaluar 740+ ofertas, generar 100+ CVs pe
 | **Scanner de portales**    | 45+ empresas pre-configuradas (Anthropic, OpenAI, ElevenLabs, Retool, n8n...) + queries en Ashby, Greenhouse, Lever, Wellfound |
 | **Batch**                  | Evaluacion en paralelo con workers `claude -p`                                                                                 |
 | **Dashboard TUI**          | Terminal UI para navegar, filtrar y ordenar tu pipeline                                                                        |
+| **Dashboard Web**          | UI web local React + Vite (tema Catppuccin) con las mismas funciones que la TUI: pestañas de filtro, ciclo de ordenación, vista agrupada/plana, búsqueda en vivo, cambio de estados, preview de PDF y pantalla de progreso. Se auto-refresca cuando cambia `applications.md` |
 | **Human-in-the-Loop**      | La IA evalua y recomienda, tu decides y actuas. El sistema nunca envia una aplicacion -- tu siempre tienes la ultima palabra   |
 | **Integridad de pipeline** | Merge automatico, dedup, normalizacion de estados, health checks                                                               |
 
@@ -203,6 +204,30 @@ npm run build:dashboard   # optional: build the standalone binary
 
 Features: 6 pestañas de filtro, 4 modos de ordenacion, vista agrupada/plana, previews lazy-loaded, cambios de estado inline.
 
+## Dashboard Web
+
+Una UI web local React + Vite que replica la TUI en el navegador. Coexiste con la TUI en Go — ambas leen y escriben el mismo `applications.md`, así que nada se desincroniza.
+
+```bash
+npm run install:web    # solo la primera vez — instala dependencias en web/, web/server/, web/client/
+npm run serve:web      # modo dev (Vite HMR en :5174, API en :3333)
+npm run build:web      # build de producción → web/client/dist/
+npm run start:web      # servidor de producción (sirve el cliente ya compilado en :3333)
+```
+
+Luego abre **http://localhost:5174** (dev) o **http://localhost:3333** (prod).
+
+Paridad de funciones con la TUI:
+
+- **Pantalla Pipeline** — 8 pestañas de filtro, 7 modos de ordenación, vista agrupada/plana, búsqueda en vivo, selector de columnas, panel de preview con arquetipo/TL;DR/comp/outcome.
+- **Visor de reportes** — renderizado markdown completo (tablas GFM + bloques de código), abrir URL de la oferta, abrir PDF de cover letter, cambiar estado inline.
+- **Pantalla de progreso** — barras de funnel, distribución de scores, tasas response/interview/offer, actividad de las últimas 8 semanas ISO.
+- **Atajos de teclado compatibles con la TUI** — `j/k` navegar, `h/l` cambiar de pestaña, `s` ciclar orden, `v` agrupado/plano, `/` buscar, `c` cambiar estado, `C` selector de columnas, `Enter` abrir reporte, `o` URL, `d` PDF, `D` regenerar PDF, `p` progreso, `g/G` inicio/final, `r` refrescar, `Esc/q` volver.
+- **Actualizaciones en vivo** — el servidor vigila `data/applications.md` con `fs.watch` y envía eventos SSE; la UI se refresca automáticamente cuando cambia un estado desde otro sitio (por ejemplo la TUI o un editor).
+- **Solo local, sin auth** — escucha en `127.0.0.1`. Todas las llamadas a shell (`abrir URL`, `abrir PDF`, `regenerar PDF`) usan `execFile` con argv arrays y validan que las rutas queden dentro del repo — sin superficie de path-traversal ni command-injection.
+
+Stack: React 18 + TypeScript + Vite 6 + Tailwind CSS (paleta Catppuccin Mocha) + backend Express 4 que reutiliza `tracker-parse.mjs` y `generate-pdf.mjs`.
+
 ## Estructura del proyecto
 
 ```
@@ -228,6 +253,9 @@ career-ops/
 │   ├── batch-prompt.md          # Prompt autocontenido del worker
 │   └── batch-runner.sh          # Script orquestador
 ├── dashboard/                   # Visor de pipeline en Go TUI
+├── web/                         # Dashboard web React (coexiste con la TUI)
+│   ├── server/                  # API Express + SSE con fs.watch
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # Tus datos de tracking (gitignored)
 ├── reports/                     # Reports de evaluacion (gitignored)
 ├── output/                      # PDFs generados (gitignored)
@@ -248,6 +276,7 @@ career-ops/
 - **PDF**: Playwright/Puppeteer + template HTML
 - **Scanner**: Playwright + Greenhouse API + WebSearch
 - **Dashboard**: Go + Bubble Tea + Lipgloss (tema Catppuccin Mocha)
+- **Dashboard Web**: React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4 (mismo tema Catppuccin, auto-refresh vía SSE)
 - **Datos**: Tablas Markdown + config YAML + ficheros TSV batch
 
 ## Sobre el autor

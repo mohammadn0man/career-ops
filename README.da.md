@@ -85,6 +85,7 @@ Bygget af en, der brugte det til at vurdere 740+ stillinger, generere 100+ skræ
 | **Portalskanner**              | 45+ virksomheder konfigureret (Anthropic, OpenAI, ElevenLabs, Retool, n8n…) + forespørgsler via Ashby, Greenhouse, Lever, Wellfound            |
 | **Batch-behandling**           | Parallel vurdering via `claude -p`-workers                                                                                                      |
 | **TUI-dashboard**              | Terminal-UI til at gennemse, filtrere og sortere pipelinen                                                                                       |
+| **Web-dashboard**              | Lokal React + Vite web-UI (Catppuccin-tema) med samme funktionssæt som TUI: filterfaner, sorteringscyklus, grupperet/flad visning, live-søgning, statusændringer, PDF-preview og progress-skærm. Auto-opdaterer når `applications.md` ændres |
 | **Human-in-the-Loop**          | AI vurderer og anbefaler, du beslutter og handler. Systemet sender aldrig ansøgninger — det sidste ord er altid dit                            |
 | **Pipeline-integritet**        | Automatisk merge, deduplikering, statusnormalisering, datakvalitetstjek                                                                          |
 
@@ -202,6 +203,30 @@ go build -o career-dashboard .
 
 Funktioner: 6 filterfaner, 4 sorteringstilstande, grupperet/flad visning, doven indlæsning af forhåndsvisninger, statusændring inline.
 
+## Web-dashboard
+
+En lokal React + Vite web-UI der spejler TUI'en i browseren. Den sameksisterer med Go-TUI'en — begge læser og skriver samme `applications.md`, så intet kommer ud af sync.
+
+```bash
+npm run install:web    # engangs — installerer afhængigheder i web/, web/server/, web/client/
+npm run serve:web      # dev-tilstand (Vite HMR på :5174, API på :3333)
+npm run build:web      # produktions-build → web/client/dist/
+npm run start:web      # produktionsserver (serverer den byggede klient på :3333)
+```
+
+Åbn derefter **http://localhost:5174** (dev) eller **http://localhost:3333** (prod).
+
+Funktionsparitet med TUI:
+
+- **Pipeline-skærm** — 8 filterfaner, 7 sorteringstilstande, grupperet/flad visning, live-søgning, kolonnevælger, preview-panel med archetype/TL;DR/comp/outcome.
+- **Rapportviewer** — komplet markdown-rendering (GFM-tabeller + kodeblokke), åbn job-URL, åbn cover letter-PDF, statusændring inline.
+- **Progress-skærm** — tragtbjælker, scorefordeling, konverteringsrater response/interview/offer, aktivitet i de sidste 8 ISO-uger.
+- **TUI-kompatible tastaturgenveje** — `j/k` navigation, `h/l` skift faner, `s` cyklisk sortering, `v` grupperet/flad, `/` søgning, `c` skift status, `C` kolonnevælger, `Enter` åbn rapport, `o` URL, `d` PDF, `D` regenerér PDF, `p` progress, `g/G` top/bund, `r` opdater, `Esc/q` tilbage.
+- **Live-opdateringer** — serveren overvåger `data/applications.md` med `fs.watch` og pusher SSE-events; UI'en opdateres automatisk, når en status ændres andre steder (fx TUI eller editor).
+- **Kun lokalt, ingen auth** — binder til `127.0.0.1`. Alle shell-kald (`åbn URL`, `åbn PDF`, `regenerér PDF`) bruger `execFile` med argv-arrays og validerer, at stier forbliver inde i repoet — ingen path-traversal- eller command-injection-overflade.
+
+Stack: React 18 + TypeScript + Vite 6 + Tailwind CSS (Catppuccin Mocha-palette) + Express 4-backend, der genbruger `tracker-parse.mjs` og `generate-pdf.mjs`.
+
 ## Projektstruktur
 
 ```text
@@ -227,6 +252,9 @@ career-ops/
 │   ├── batch-prompt.md          # Selvstændig worker-prompt
 │   └── batch-runner.sh          # Orkestratorscript
 ├── dashboard/                   # Go TUI-viewer til pipelinen
+├── web/                         # React web-dashboard (sameksisterer med TUI)
+│   ├── server/                  # Express API + fs.watch SSE
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # Dine sporingsdata (gitignored)
 ├── reports/                     # Vurderingsrapporter (gitignored)
 ├── output/                      # Genererede PDF'er (gitignored)
@@ -247,6 +275,7 @@ career-ops/
 - **PDF**: Playwright/Puppeteer + HTML-skabelon
 - **Skanner**: Playwright + Greenhouse API + WebSearch
 - **Dashboard**: Go + Bubble Tea + Lipgloss (Catppuccin Mocha-tema)
+- **Web-dashboard**: React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4 (samme Catppuccin-tema, auto-opdatering via SSE)
 - **Data**: Markdown-tabeller + YAML-konfiguration + TSV-filer til batches
 
 ## Også open source

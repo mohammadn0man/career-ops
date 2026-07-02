@@ -95,6 +95,7 @@ Conçu par quelqu'un qui l'a utilisé pour évaluer plus de 740 offres d'emploi,
 | **Scanner de Portails** | Plus de 45 entreprises préconfigurées (Anthropic, OpenAI, ElevenLabs, Retool, n8n...) + requêtes personnalisées sur Ashby, Greenhouse, Lever, Wellfound |
 | **Traitement en Lot** | Évaluation parallèle avec des processus de travail `claude -p` |
 | **TUI de Tableau de Bord** | Interface terminal pour explorer, filtrer et trier votre pipeline |
+| **Tableau de bord Web** | Interface web locale React + Vite (thème Catppuccin) avec les mêmes fonctionnalités que la TUI : onglets de filtre, cycle de tri, vue groupée/plate, recherche en direct, changements de statut, aperçu PDF et écran de progression. Se rafraîchit automatiquement quand `applications.md` change |
 | **Humain dans la Boucle** | L'IA évalue et recommande, vous décidez et agissez. Le système ne soumet jamais de candidature automatiquement — vous avez toujours le dernier mot |
 | **Intégrité du Pipeline** | Fusion automatisée, déduplication, normalisation des statuts et vérifications de santé |
 
@@ -257,6 +258,30 @@ go build -o career-dashboard .
 
 Fonctionnalités : 6 onglets de filtrage, 4 modes de tri, vue groupée ou plate, chargement différé des aperçus, modification du statut en ligne.
 
+## Tableau de bord Web
+
+Une interface web locale React + Vite qui reproduit la TUI dans le navigateur. Elle coexiste avec la TUI Go — les deux lisent et écrivent le même `applications.md`, donc rien ne se désynchronise.
+
+```bash
+npm run install:web    # première fois — installe les dépendances de web/, web/server/, web/client/
+npm run serve:web      # mode dev (Vite HMR sur :5174, API sur :3333)
+npm run build:web      # build de production → web/client/dist/
+npm run start:web      # serveur de production (sert le client compilé sur :3333)
+```
+
+Puis ouvrez **http://localhost:5174** (dev) ou **http://localhost:3333** (prod).
+
+Parité fonctionnelle avec la TUI :
+
+- **Écran Pipeline** — 8 onglets de filtre, 7 modes de tri, vue groupée/plate, recherche en direct, sélecteur de colonnes, panneau d'aperçu avec archétype/TL;DR/comp/outcome.
+- **Visualiseur de rapports** — rendu markdown complet (tables GFM + blocs de code), ouvrir l'URL de l'offre, ouvrir le PDF de lettre de motivation, changement de statut en ligne.
+- **Écran de progression** — barres de funnel, distribution des scores, taux de conversion response/interview/offer, activité des 8 dernières semaines ISO.
+- **Raccourcis clavier compatibles avec la TUI** — `j/k` naviguer, `h/l` changer d'onglet, `s` cycler le tri, `v` groupé/plat, `/` rechercher, `c` changer statut, `C` sélecteur de colonnes, `Enter` ouvrir rapport, `o` URL, `d` PDF, `D` régénérer PDF, `p` progression, `g/G` début/fin, `r` rafraîchir, `Esc/q` retour.
+- **Mises à jour en direct** — le serveur surveille `data/applications.md` via `fs.watch` et envoie des événements SSE ; l'UI se rafraîchit automatiquement quand un statut change ailleurs (par ex. depuis la TUI ou un éditeur).
+- **Local uniquement, sans auth** — écoute sur `127.0.0.1`. Tous les appels shell (`ouvrir URL`, `ouvrir PDF`, `régénérer PDF`) utilisent `execFile` avec des tableaux argv et valident que les chemins restent dans le dépôt — aucune surface de path-traversal ou command-injection.
+
+Stack : React 18 + TypeScript + Vite 6 + Tailwind CSS (palette Catppuccin Mocha) + backend Express 4 qui réutilise `tracker-parse.mjs` et `generate-pdf.mjs`.
+
 ## Structure du projet
 
 ```
@@ -282,6 +307,9 @@ career-ops/
 │   ├── batch-prompt.md          # Consigne pour le traitement par lot
 │   └── batch-runner.sh          # Script d'orchestration
 ├── dashboard/                   # Visualiseur de pipeline TUI en Go
+├── web/                         # Tableau de bord web React (coexiste avec la TUI)
+│   ├── server/                  # API Express + SSE fs.watch
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # Vos données de suivi (gitignoré)
 ├── reports/                     # Rapports d'évaluation (gitignoré)
 ├── output/                      # CV PDF générés (gitignoré)
@@ -296,6 +324,7 @@ career-ops/
 - **PDF** : Playwright/Puppeteer + modèle HTML
 - **Scanner** : Playwright + API Greenhouse + Recherche Web
 - **Tableau de bord** : Go + Bubble Tea + Lipgloss (thème Catppuccin Mocha)
+- **Tableau de bord Web** : React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4 (même thème Catppuccin, auto-rafraîchissement via SSE)
 - **Données** : Tableaux Markdown + configuration YAML + fichiers TSV pour les lots
 
 ## Également en Open Source

@@ -89,6 +89,7 @@ Career-ops는 에이전트 기반으로 작동합니다: Claude Code가 Playwrig
 | **포털 스캐너**        | 45개 이상의 기업 사전 설정 (Anthropic, OpenAI, ElevenLabs, Retool, n8n 등) + Ashby, Greenhouse, Lever, Wellfound 전반의 커스텀 검색 |
 | **일괄 처리**          | `claude -p` 워커로 병렬 평가                                                                                                        |
 | **Dashboard TUI**      | 터미널 UI에서 파이프라인 탐색, 필터링, 정렬                                                                                         |
+| **웹 대시보드**        | TUI와 동일한 기능을 가진 로컬 React + Vite 웹 UI (Catppuccin 테마): 필터 탭, 정렬 사이클, 그룹/플랫 뷰, 실시간 검색, 상태 변경, PDF 프리뷰, 진행 화면. `applications.md` 변경 시 자동 새로고침 |
 | **Human-in-the-Loop**  | AI가 평가하고 추천하면, 당신이 판단하고 행동합니다. 시스템은 절대 지원서를 자동 제출하지 않습니다 -- 최종 결정은 항상 당신의 몫     |
 | **파이프라인 무결성**  | 자동 병합, 중복 제거, 상태 정규화, 헬스 체크                                                                                        |
 
@@ -197,6 +198,30 @@ npm run build:dashboard   # optional: build the standalone binary
 
 기능: 6개의 필터 탭, 4가지 정렬 모드, 그룹/플랫 뷰, 지연 로딩 미리보기, 인라인 상태 변경.
 
+## 웹 대시보드
+
+브라우저에서 TUI를 미러링하는 로컬 React + Vite 웹 UI입니다. Go TUI와 공존하며 — 둘 다 동일한 `applications.md`를 읽고 쓰므로 동기화가 어긋나지 않습니다.
+
+```bash
+npm run install:web    # 최초 1회 — web/, web/server/, web/client/ 의존성 설치
+npm run serve:web      # 개발 모드 (Vite HMR :5174, API :3333)
+npm run build:web      # 프로덕션 빌드 → web/client/dist/
+npm run start:web      # 프로덕션 서버 (빌드된 클라이언트를 :3333에서 제공)
+```
+
+그런 다음 **http://localhost:5174** (개발) 또는 **http://localhost:3333** (프로덕션)을 엽니다.
+
+TUI와 기능 동등성:
+
+- **파이프라인 화면** — 8개 필터 탭, 7가지 정렬 모드, 그룹/플랫 뷰, 실시간 검색, 컬럼 선택기, archetype/TL;DR/comp/outcome 프리뷰 패널.
+- **리포트 뷰어** — 완전한 마크다운 렌더링 (GFM 테이블 + 코드 블록), 채용 URL 열기, 커버레터 PDF 열기, 인라인 상태 변경.
+- **진행 화면** — 퍼널 바, 점수 분포, response/interview/offer 전환율, 최근 8 ISO 주 활동.
+- **TUI 호환 키보드 단축키** — `j/k` 탐색, `h/l` 탭 전환, `s` 정렬 순환, `v` 그룹/플랫, `/` 검색, `c` 상태 변경, `C` 컬럼 선택기, `Enter` 리포트 열기, `o` URL, `d` PDF, `D` PDF 재생성, `p` 진행, `g/G` 처음/끝, `r` 새로고침, `Esc/q` 뒤로.
+- **실시간 업데이트** — 서버가 `fs.watch`로 `data/applications.md`를 감시하고 SSE 이벤트를 푸시합니다. 다른 곳(TUI 또는 에디터)에서 상태가 바뀌면 UI가 자동으로 새로고침됩니다.
+- **로컬 전용, 인증 없음** — `127.0.0.1`에 바인딩. 모든 shell 호출(`URL 열기`, `PDF 열기`, `PDF 재생성`)은 argv 배열을 사용하는 `execFile`을 쓰며 경로가 리포지토리 내부에 있는지 검증합니다 — path-traversal 및 command-injection 표면 없음.
+
+스택: React 18 + TypeScript + Vite 6 + Tailwind CSS (Catppuccin Mocha 팔레트) + `tracker-parse.mjs` 및 `generate-pdf.mjs`를 재사용하는 Express 4 백엔드.
+
 ## 프로젝트 구조
 
 ```
@@ -221,6 +246,9 @@ career-ops/
 │   ├── batch-prompt.md          # 독립형 워커 프롬프트(Self-contained)
 │   └── batch-runner.sh          # 오케스트레이터 스크립트
 ├── dashboard/                   # Go TUI 파이프라인 뷰어
+├── web/                         # React 웹 대시보드 (TUI와 공존)
+│   ├── server/                  # Express API + fs.watch SSE
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # 트래킹 데이터 (gitignored)
 ├── reports/                     # 평가 리포트 (gitignored)
 ├── output/                      # 생성된 PDF (gitignored)
@@ -241,6 +269,7 @@ career-ops/
 - **PDF**: Playwright/Puppeteer + HTML 템플릿
 - **스캐너**: Playwright + Greenhouse API + WebSearch
 - **대시보드**: Go + Bubble Tea + Lipgloss (Catppuccin Mocha 테마)
+- **웹 대시보드**: React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4 (동일한 Catppuccin 테마, SSE 기반 자동 새로고침)
 - **데이터**: Markdown 테이블 + YAML 설정 + TSV 배치 파일
 
 ## 관련 오픈소스 프로젝트

@@ -91,6 +91,7 @@ career-ops 具有代理能力：Claude Code 透過 Playwright 瀏覽求職頁面
 | **平台掃描器**   | 預設超過 45 家企業（Anthropic、OpenAI、ElevenLabs、Retool、n8n...）+ 跨 Ashby、Greenhouse、Lever、Wellfound 的自訂查詢 |
 | **批次處理**     | 使用 `claude -p` 工作器並行評估                                                                                        |
 | **儀表板 TUI**   | 在終端機 UI 中瀏覽、篩選及排序你的求職管道                                                                             |
+| **Web 儀表板**   | 本地 React + Vite Web UI（Catppuccin 主題），功能與 TUI 相同：篩選分頁、排序循環、分組/平鋪檢視、即時搜尋、狀態變更、PDF 預覽及進度頁面。`applications.md` 變動時自動重新整理 |
 | **人機協作**     | AI 負責評估與建議，你負責決策與行動。系統絕不自動送出應徵 — 最終決定永遠在你手上                                       |
 | **管道完整性**   | 自動合併、去重、狀態正規化、健康檢查                                                                                   |
 
@@ -200,6 +201,30 @@ npm run build:dashboard   # optional: build the standalone binary
 
 功能：6 個篩選分頁、4 種排序模式、分組/平鋪檢視、延遲載入預覽、內嵌狀態修改。
 
+## Web 儀表板
+
+一個在瀏覽器中鏡像 TUI 的本地 React + Vite Web UI。它與 Go TUI 共存 — 兩者讀寫同一個 `applications.md`，因此不會發生同步偏差。
+
+```bash
+npm run install:web    # 首次 — 安裝 web/、web/server/、web/client/ 的依賴
+npm run serve:web      # 開發模式（Vite HMR 在 :5174，API 在 :3333）
+npm run build:web      # 生產建置 → web/client/dist/
+npm run start:web      # 生產伺服器（在 :3333 上提供建置後的客戶端）
+```
+
+然後開啟 **http://localhost:5174** (開發) 或 **http://localhost:3333** (生產)。
+
+與 TUI 的功能對等：
+
+- **Pipeline 頁面** — 8 個篩選分頁、7 種排序模式、分組/平鋪檢視、即時搜尋、欄位選擇器、帶 archetype/TL;DR/comp/outcome 的預覽面板。
+- **報告檢視器** — 完整的 Markdown 渲染（GFM 表格 + 程式碼區塊）、開啟職缺 URL、開啟 cover letter PDF、內嵌狀態變更。
+- **進度頁面** — 漏斗長條、評分分佈、response/interview/offer 轉換率、最近 8 個 ISO 週的活動。
+- **相容 TUI 的鍵盤快捷鍵** — `j/k` 導覽、`h/l` 切換分頁、`s` 循環排序、`v` 分組/平鋪、`/` 搜尋、`c` 變更狀態、`C` 欄位選擇器、`Enter` 開啟報告、`o` URL、`d` PDF、`D` 重新產生 PDF、`p` 進度、`g/G` 頂端/末端、`r` 重新整理、`Esc/q` 返回。
+- **即時更新** — 伺服器使用 `fs.watch` 監視 `data/applications.md` 並推送 SSE 事件；當其他地方（例如 TUI 或編輯器）變更狀態時，UI 會自動重新整理。
+- **僅本地，無驗證** — 綁定至 `127.0.0.1`。所有 shell 呼叫（`開啟 URL`、`開啟 PDF`、`重新產生 PDF`）皆使用帶 argv 陣列的 `execFile` 並驗證路徑位於儲存庫內 — 沒有 path-traversal 或 command-injection 攻擊面。
+
+技術堆疊：React 18 + TypeScript + Vite 6 + Tailwind CSS（Catppuccin Mocha 調色盤）+ 重用 `tracker-parse.mjs` 與 `generate-pdf.mjs` 的 Express 4 後端。
+
 ## 專案結構
 
 ```
@@ -224,6 +249,9 @@ career-ops/
 │   ├── batch-prompt.md          # 自包含工作器提示
 │   └── batch-runner.sh          # 協調器腳本
 ├── dashboard/                   # Go TUI 管道檢視器
+├── web/                         # React Web 儀表板（與 TUI 共存）
+│   ├── server/                  # Express API + fs.watch SSE
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # 你的追蹤資料（已 gitignore）
 ├── reports/                     # 評估報告（已 gitignore）
 ├── output/                      # 生成的 PDF（已 gitignore）
@@ -244,6 +272,7 @@ career-ops/
 - **PDF**：Playwright/Puppeteer + HTML 範本
 - **掃描器**：Playwright + Greenhouse API + WebSearch
 - **儀表板**：Go + Bubble Tea + Lipgloss（Catppuccin Mocha 主題）
+- **Web 儀表板**：React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4（同樣的 Catppuccin 主題，SSE 驅動的自動重新整理）
 - **資料**：Markdown 表格 + YAML 設定 + TSV 批次檔案
 
 ## 同樣開源

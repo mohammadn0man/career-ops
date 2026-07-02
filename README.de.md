@@ -107,6 +107,7 @@ Gebaut von jemandem, der damit 740+ Stellenanzeigen bewertet, 100+ personalisier
 | **Portal-Scanner** | 45+ vorkonfigurierte Unternehmen (Anthropic, OpenAI, ElevenLabs, Retool, n8n...) plus eigene Queries über Ashby, Greenhouse, Lever und Wellfound |
 | **Batch Processing** | Parallele Bewertung mit headless CLI-Workern (`claude -p` / `opencode run`) |
 | **Dashboard TUI** | Terminal-UI zum Durchsuchen, Filtern und Sortieren deiner Pipeline |
+| **Web-Dashboard** | Lokale React + Vite Web-UI (Catppuccin-Theme) mit gleichem Funktionsumfang wie die TUI: Filter-Tabs, Sortier-Zyklus, gruppierte/flache Ansicht, Live-Suche, Statusänderungen, PDF-Vorschau und Progress-Screen. Aktualisiert sich automatisch bei Änderungen an `applications.md` |
 | **Human-in-the-Loop** | KI bewertet und empfiehlt, du entscheidest. Das System sendet niemals automatisch Bewerbungen ab |
 | **Pipeline-Integrität** | Automatisches Mergen, Deduplizieren, Status-Normalisierung und Health Checks |
 
@@ -230,6 +231,30 @@ go build -o career-dashboard .
 
 Features: 6 Filter-Tabs, 4 Sortiermodi, gruppierte/flache Ansicht, lazy-loaded Previews, Statusänderungen inline.
 
+## Web-Dashboard
+
+Eine lokale React + Vite Web-UI, die die TUI im Browser spiegelt. Sie koexistiert mit der Go-TUI — beide lesen und schreiben dieselbe `applications.md`, sodass nichts aus dem Takt gerät.
+
+```bash
+npm run install:web    # einmalig — installiert Abhängigkeiten in web/, web/server/, web/client/
+npm run serve:web      # Dev-Modus (Vite HMR auf :5174, API auf :3333)
+npm run build:web      # Produktions-Build → web/client/dist/
+npm run start:web      # Produktions-Server (bedient den gebauten Client auf :3333)
+```
+
+Dann öffne **http://localhost:5174** (Dev) oder **http://localhost:3333** (Prod).
+
+Funktionale Parität mit der TUI:
+
+- **Pipeline-Screen** — 8 Filter-Tabs, 7 Sortiermodi, gruppierte/flache Ansicht, Live-Suche, Spalten-Picker, Preview-Panel mit Archetyp/TL;DR/Comp/Outcome.
+- **Report-Viewer** — vollständiges Markdown-Rendering (GFM-Tabellen + Codeblöcke), Job-URL öffnen, Anschreiben-PDF öffnen, Statusänderung inline.
+- **Progress-Screen** — Funnel-Balken, Score-Verteilung, Response/Interview/Offer-Conversion, letzte 8 ISO-Wochen Aktivität.
+- **TUI-kompatible Tastaturkürzel** — `j/k` Navigation, `h/l` Tab-Wechsel, `s` Sortieren, `v` gruppiert/flach, `/` Suche, `c` Status, `C` Spalten, `Enter` Report, `o` URL, `d` PDF, `D` PDF regenerieren, `p` Progress, `g/G` Anfang/Ende, `r` Refresh, `Esc/q` zurück.
+- **Live-Updates** — der Server überwacht `data/applications.md` per `fs.watch` und sendet SSE-Events; die UI aktualisiert sich automatisch, wenn woanders ein Status geändert wird (z. B. via TUI oder Editor).
+- **Nur lokal, keine Auth** — bindet an `127.0.0.1`. Alle Shell-Aufrufe (`URL öffnen`, `PDF öffnen`, `PDF regenerieren`) nutzen `execFile` mit Argv-Arrays und validieren, dass Pfade innerhalb des Repos liegen — kein Path-Traversal oder Command-Injection möglich.
+
+Stack: React 18 + TypeScript + Vite 6 + Tailwind CSS (Catppuccin Mocha) + Express 4 Backend, das `tracker-parse.mjs` und `generate-pdf.mjs` wiederverwendet.
+
 ## Projektstruktur
 
 ```text
@@ -246,6 +271,9 @@ career-ops/
 ├── templates/                   # CV-Template, Portal-Template, Statuswerte
 ├── batch/                       # Batch-Orchestrierung
 ├── dashboard/                   # Go-TUI für die Pipeline
+├── web/                         # React-Web-Dashboard (koexistiert mit der TUI)
+│   ├── server/                  # Express-API + fs.watch-SSE
+│   └── client/                  # Vite + React + TS + Tailwind
 ├── data/                        # deine Tracking-Daten (gitignored)
 ├── reports/                     # Bewertungsberichte (gitignored)
 ├── output/                      # generierte PDFs (gitignored)
@@ -267,6 +295,7 @@ career-ops/
 - **Anschreiben:** HTML-Template + Playwright (A4-PDF, gleiche Pipeline wie Lebensläufe)
 - **Scanner:** Playwright + Greenhouse API + WebSearch
 - **Dashboard:** Go + Bubble Tea + Lipgloss (Catppuccin-Mocha-Theme)
+- **Web-Dashboard:** React 18 + TypeScript + Vite 6 + Tailwind CSS + Express 4 (dasselbe Catppuccin-Theme, SSE-getriebene Auto-Aktualisierung)
 - **Daten:** Markdown-Tabellen + YAML-Konfiguration + TSV-Batch-Dateien
 
 ## Ebenfalls Open Source

@@ -1,0 +1,15 @@
+{
+  "name": "career-ops-web",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,cyan \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node --watch server/index.mjs",
+    "dev:client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "node server/index.mjs",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
