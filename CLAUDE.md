@@ -1,4 +1,4 @@
-﻿# Career-Ops -- AI Job Search Pipeline
+# Career-Ops -- AI Job Search Pipeline
 
 ## Origin
 

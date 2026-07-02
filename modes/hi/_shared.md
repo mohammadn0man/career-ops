@@ -155,6 +155,7 @@ Profile को **"Demonstrable practice वाले Technical Builder"** के
 - Free-text fields: timezone overlap और availability explicitly बताएं
 
 **Evaluations में (scoring):**
+<!-- India-market deviation: "city" instead of "country" — domestic single-country market, city proximity is the relevant threshold -->
 - Hybrid के लिए जो आपके city में नहीं है: Score **3.0** (1.0 नहीं)
 - Score 1.0 केवल तभी यदि offer explicitly कहे "4-5 दिन mandatory on-site, कोई exception नहीं"
 
