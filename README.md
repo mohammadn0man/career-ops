@@ -85,6 +85,7 @@ Career-Ops ([career-ops.org](https://career-ops.org), also known as **careerops*
 - **Scans portals** automatically (Greenhouse, Ashby, Lever, company pages)
 - **Processes in batch** -- evaluate 10+ offers in parallel with sub-agents
 - **Tracks everything** in a single source of truth with integrity checks
+- **Researches companies and finds the right person to contact** -- applications get you in the queue; research gets you a conversation
 
 > **Important: This is NOT a spray-and-pray tool.** Career-ops is a filter -- it helps you find the few offers worth your time out of hundreds. The system strongly recommends against applying to anything scoring below 4.0/5. Your time is valuable, and so is the recruiter's. Always review before submitting.
 
@@ -110,6 +111,7 @@ Built by someone who used it to evaluate 740+ job offers, generate 100+ tailored
 | **Web Dashboard**        | Local React + Vite web UI (Catppuccin theme) with the same feature set as the TUI: filter tabs, sort cycle, grouped/flat view, live search, status changes, PDF preview, and progress screen. Auto-refreshes when `applications.md` changes |
 | **Human-in-the-Loop**    | AI evaluates and recommends, you decide and act. The system never submits an application -- you always have the final call               |
 | **Pipeline Integrity**   | Automated merge, dedup, status normalization, health checks                                                                              |
+| **Beyond the CV**        | Company research ([`deep`](modes/deep.md)) surfaces AI strategy, recent moves, engineering culture, and the angle your profile should take. Contact discovery ([`contacto`](modes/contacto.md)) identifies the hiring manager, recruiter, or team peer worth reaching out to and drafts a ≤300-character LinkedIn message tuned to each contact type. Applications get you in the queue; research gets you a conversation. |
 
 ## Quick Start
 
@@ -282,8 +284,8 @@ Career-ops uses a shared command router. In CLIs that register slash commands, i
 /career-ops tracker        → View application status
 /career-ops apply          → Fill application forms with AI
 /career-ops pipeline       → Process pending URLs
-/career-ops contacto       → LinkedIn outreach message
-/career-ops deep           → Deep company research
+/career-ops contacto       → Find hiring manager / recruiter / peer + draft a ≤300-char LinkedIn message per contact type
+/career-ops deep           → Generate a structured 6-axis research prompt (AI strategy, recent moves, culture, challenges, competitors, candidate angle)
 /career-ops training       → Evaluate a course/cert
 /career-ops project        → Evaluate a portfolio project
 ```
@@ -348,29 +350,7 @@ npm run build:dashboard   # optional: build the standalone binary
 
 Features: 6 filter tabs, 4 sort modes, grouped/flat view, lazy-loaded previews, inline status changes.
 
-## Web Dashboard
-
-A local React + Vite web UI that mirrors the TUI in the browser. It coexists with the Go TUI — both read and write the same `applications.md`, so nothing goes out of sync.
-
-```bash
-npm run install:web    # one-time — installs web/, web/server/, web/client/ deps
-npm run serve:web      # dev mode (Vite HMR on :5174, API on :3333)
-npm run build:web      # production build → web/client/dist/
-npm run start:web      # production server (serves the built client on :3333)
-```
-
-Then open **http://localhost:5174** (dev) or **http://localhost:3333** (prod).
-
-Feature parity with the TUI:
-
-- **Pipeline screen** — 8 filter tabs (ALL, EVALUATED, APPLIED, INTERVIEW, TOP ≥4, SKIP, REJECTED, DISCARDED), 7 sort modes (score, date, company, status, location, pay, last), grouped/flat view, live search, column picker, preview panel with archetype/TL;DR/comp/outcome facts.
-- **Report viewer** — full markdown rendering (GFM tables + code blocks), open job URL, open cover-letter PDF, inline status change.
-- **Progress screen** — funnel bars, score distribution, response/interview/offer conversion rates, last 8 ISO weeks of activity.
-- **TUI-compatible keyboard shortcuts** — `j/k` navigate, `h/l` tab switch, `s` cycle sort, `v` toggle grouped/flat, `/` search, `c` change status, `C` column picker, `Enter` open report, `o` open job URL, `d` open PDF, `D` regenerate PDF, `p` progress, `g/G` jump to top/end, `r` refresh, `Esc/q` back.
-- **Live updates** — the server watches `data/applications.md` with `fs.watch` and pushes SSE events; the UI auto-refreshes when a status changes elsewhere (e.g. the TUI or an editor).
-- **Local-only, no auth** — binds to `127.0.0.1`. All shell-outs (`open URL`, `open PDF`, `regenerate PDF`) use `execFile` with argv arrays and validate paths stay inside the repo, so no path-traversal or command-injection surface.
-
-Stack: React 18 + TypeScript + Vite 6 + Tailwind CSS (Catppuccin Mocha palette) + Express 4 backend that reuses `tracker-parse.mjs` and `generate-pdf.mjs`.
+There is also an **experimental web UI** (alpha, opt-in — nothing runs unless you start it): see [`web/README.md`](web/README.md).
 
 ## Project Structure
 

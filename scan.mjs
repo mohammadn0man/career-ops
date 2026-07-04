@@ -38,6 +38,7 @@ import yaml from 'js-yaml';
 import { makeHttpCtx } from './providers/_http.mjs';
 import { buildTrustValidator } from './providers/_trust-validator.mjs';
 import { mergeProviderPlugins } from './plugins/_engine.mjs';
+import { classifyFetchError } from './verify-portals.mjs';
 
 const parseYaml = yaml.load;
 
@@ -907,6 +908,17 @@ async function main() {
   const companies = Array.isArray(config.tracked_companies) ? config.tracked_companies : [];
   const boards = Array.isArray(config.job_boards) ? config.job_boards : [];
   const titleFilter = buildTitleFilter(config.title_filter);
+
+  // Seniority tier classifier integration
+  let classifyTier = null;
+  const skipTiers = Array.isArray(config.skip_tiers)
+    ? config.skip_tiers.filter(t => typeof t === 'string').map(t => t.toLowerCase())
+    : [];
+  if (skipTiers.length > 0) {
+    const mod = await import('./classify-tier.mjs');
+    classifyTier = mod.classifyTier || mod.default;
+  }
+
   const locationFilter = buildLocationFilter(config.location_filter);
   const salaryFilter = buildSalaryFilter(config.salary_filter);
   const trustValidator = buildTrustValidator(config.trust_filter);
@@ -984,12 +996,14 @@ async function main() {
   const cooldownOffers = [];
   let totalFound = 0;
   let totalFilteredTitle = 0;
+  let totalFilteredTier = 0;
   let totalFilteredLocation = 0;
   let totalFilteredSalary = 0;
   let totalFilteredContent = 0;
   let totalDupes = 0;
   const newOffers = [];
   const errors = [...resolveErrors];
+  const emptyTargets = [];
 
   const tasks = targets.map(company => async () => {
     let provider = company._provider;
@@ -1015,6 +1029,9 @@ async function main() {
         throw new Error(`${provider.id}: fetch() did not return an array`);
       }
       totalFound += jobs.length;
+      if (!company._isBoard && jobs.length === 0) {
+        emptyTargets.push(company.name);
+      }
 
       for (const job of jobs) {
         // Trust enrichment — runs before filters, never drops
@@ -1025,6 +1042,10 @@ async function main() {
 
         if (!titleFilter(job.title)) {
           totalFilteredTitle++;
+          continue;
+        }
+        if (classifyTier && skipTiers.includes(classifyTier(job.title))) {
+          totalFilteredTier++;
           continue;
         }
         if (!locationFilter(job.location)) {
@@ -1072,7 +1093,11 @@ async function main() {
         });
       }
     } catch (err) {
-      errors.push({ company: company.name, error: err.message });
+      errors.push({
+        company: company.name,
+        error: err.message,
+        kind: classifyFetchError(err),
+      });
     }
   });
 
@@ -1155,6 +1180,9 @@ async function main() {
   if (summaryBoards > 0) console.log(`Job boards scanned:    ${summaryBoards}`);
   console.log(`Total jobs found:      ${totalFound}`);
   console.log(`Filtered by title:     ${totalFilteredTitle} removed`);
+  if (skipTiers.length > 0) {
+    console.log(`Filtered by tier:      ${totalFilteredTier} removed`);
+  }
   console.log(`Filtered by location:  ${totalFilteredLocation} removed`);
   console.log(`Filtered by salary:   ${totalFilteredSalary} removed`);
   console.log(`Filtered by content:  ${totalFilteredContent} removed`);
@@ -1204,9 +1232,26 @@ async function main() {
     }
   }
 
-  if (errors.length > 0) {
-    console.log(`\nErrors (${errors.length}):`);
-    for (const e of errors) {
+  const unreachableTargets = errors.filter((e) => e.kind === 'slug_gone');
+  const networkTargets = errors.filter((e) => e.kind === 'network');
+  const otherErrors = errors.filter((e) => e.kind !== 'slug_gone' && e.kind !== 'network');
+
+  if (unreachableTargets.length > 0) {
+    const names = unreachableTargets.map((e) => e.company).join(', ');
+    console.log(`\n⚠️  ${unreachableTargets.length} target(s) unreachable (slug?): ${names} — run: node verify-portals.mjs`);
+  }
+  if (emptyTargets.length > 0) {
+    console.log(`🟡 ${emptyTargets.length} target(s) live but empty: ${emptyTargets.join(', ')}`);
+  }
+  if (networkTargets.length > 0) {
+    console.log(`\nNetwork errors (${networkTargets.length}):`);
+    for (const e of networkTargets) {
+      console.log(`  ✗ ${e.company}: ${e.error}`);
+    }
+  }
+  if (otherErrors.length > 0) {
+    console.log(`\nErrors (${otherErrors.length}):`);
+    for (const e of otherErrors) {
       console.log(`  ✗ ${e.company}: ${e.error}`);
     }
   }
